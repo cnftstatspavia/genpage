@@ -1,0 +1,512 @@
+---
+title: "SpaceApe Dashboard"
+date: "</br>Updated: `r format(as.POSIXlt(Sys.time(), tz = 'UTC'), '%b-%d %H:%M UTC')`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    navbar:
+      - { title: "About", href: "#about" }
+      - { title: "Discord", href: "https://discord.gg/3Sn9pyjw"}
+    social: ["menu"]
+    css: rmd_flexboard.css
+    self_contained: TRUE
+    includes:
+      in_header: header.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, comment = "", dev = "svglite", fig.ext = ".svg")
+
+# Libraries
+library(flexdashboard)
+library(htmlwidgets)
+library(data.table)
+library(magrittr)
+library(ggplot2)
+library(svglite)
+library(plotly)
+library(DT)
+
+# Data
+DT <- readRDS("data/DT.rds")
+# DTL <- readRDS("data/DTL.rds")
+RAR <- readRDS("data/RAR_sac.rds")
+# traits <- readRDS("data/traits_sac.rds")
+
+img_link <- "https://raw.githubusercontent.com/cnftstats/images/main/sac/sac"
+
+# javascript (clickable datapoints url)
+# https://stackoverflow.com/questions/51681079/how-to-make-scatterplot-points-open-a-hyperlink-using-ggplotly-r
+
+js <- "function(el, x) {
+  el.on('plotly_click', function(d) {
+    var link = d.points[0].customdata;
+    window.open(link);
+  });
+}"
+
+# Functions
+loj <- function (X = NULL, Y = NULL, onCol = NULL) {
+  if (truelength(X) == 0 | truelength(Y) == 0) 
+    stop("setDT(X) and setDT(Y) first")
+  n <- names(Y)
+  X[Y, `:=`((n), mget(paste0("i.", n))), on = onCol]
+}
+```
+
+# Sidebar {data-width=70, .sidebar}
+<ul id="sidebar_ul">
+<li><a href="https://cnftstats.github.io/html/bcrc.html">BCRC</a></li>
+<li><a href="https://cnftstats.github.io/html/mocossi.html">Mocossi</a></li>
+<li id="currentProject"><a href="https://cnftstats.github.io/html/sac.html">SpaceApe</a></li>
+<li><a href="https://cnftstats.github.io/html/chilledkongs.html">ChilledKongs</a></li>
+</ul>
+
+# Floor {data-icon="ion-arrow-graph-up-right"}
+## Column 1 {data-width=650}
+### Price distribution
+```{r fig.width=8}
+X <- copy(DT)
+X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
+X[price %between% c(1000, 1999), price_range := trunc(price/200)*200]
+X[price %between% c(2000, 4999), price_range := trunc(price/500)*500]
+X[price %between% c(5000, 9999), price_range := trunc(price/2000)*2000]
+X[price >= 10000, price_range := 10000]
+X <- X[complete.cases(price_range), .(price_range, market)]
+num_listings <- nrow(X)
+
+X <- X[, .N, .(price_range, market)][order(price_range)]
+X[price_range %between% c(0, 999),     x_label := paste0(price_range, "-", price_range + (50-1))]
+X[price_range %between% c(1000, 1999), x_label := paste0(price_range, "-", price_range + (200-1))]
+X[price_range %between% c(2000, 4999), x_label := paste0(price_range, "-", price_range + (500-1))]
+X[price_range %between% c(5000, 9999), x_label := paste0(price_range, "-", price_range + (2000-1))]
+X[price_range > 9999,                  x_label := "10000+"]
+
+.X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
+X[, x_label := factor(x_label, levels = .X$x_label)]
+X[, market := factor(market, levels = c("jpg.store", "cnft.io"))]
+
+ggplot(X, aes(x_label, N, fill = market)) +
+  geom_bar(stat = "identity", alpha = .8) +
+  geom_text(aes(label = stat(y), group = x_label),
+            stat = 'summary', fun = sum, vjust = -.5, hjust = +.55,
+            color = "steelblue4", size = 3) +
+  scale_fill_manual(values = c("jpg.store" = "steelblue3", "cnft.io" = "steelblue4")) +
+  labs(x = "Price range", y = "Number of listings", fill = "",
+       caption = sprintf("Floor: %d ada  |  Listings: %d\nSource: https://cnftstats.github.io/",
+                         min(DT$price), num_listings)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = -45, vjust = +.5, hjust = 0,
+                                   color = "grey50", size = 8),
+        axis.text.y = element_text(color = "grey50", size = 8),
+        legend.position = "top", legend.justification = 'left', legend.direction = "horizontal",
+        legend.text = element_text(color = "grey50", size = 8),
+        plot.caption = element_text(color = "#008B8B", vjust = +13, hjust = 0, size = 8),
+        plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
+```
+
+## Column 2 {data-width=350}
+### Sweep that floor: Lowest listings
+```{r}
+X <- DT[order(price)][1:15]
+X[, img := sprintf('<img src="%s%d.png" class="img_html">', img_link, asset_number)]
+X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, asset_number)]
+
+X <- X[, .(img, price, asset_rank, asset_rarity, sc, market)]
+X <- X[complete.cases(X)]
+
+datatable(X, class = 'compact stripe hover nowrap',
+          options = list(dom = "t",
+                         pageLength = 100,
+                         scrollY = '100%',
+                         bLengthChange = FALSE,
+                         bPaginate = FALSE,
+                         info = FALSE,
+                         columnDefs = list(list(className = 'dt-right', targets = "_all"))),
+          colnames = c("Asset", "Price", "Rank", "Rarity", "Sc", "Market"),
+          rownames = FALSE,
+          escape = FALSE) %>%
+  formatStyle(columns = 1:ncol(X), fontSize = '90%')
+```
+
+# Rank {data-icon="fa-signal"}
+## Column 1 {data-width=500, .tabset}
+### Linear scale
+```{r}
+X <- DT[price < 6000]
+scale_x <- c(seq(0, 2000, 250), seq(2500, 10000, 500))
+scale_x[scale_x == 0] <- 1
+scale_x[scale_x == 10000] <- 9999
+scale_y <- c(seq(0, 2000, 250), seq(2000, 6000, 500))
+gg <- ggplot(X, aes(asset_rank, price, shape = sc, customdata = link,
+                    text = paste0(asset,
+                                  "</br></br>", paste("Price:", price,
+                                                      "</br>Last offer:", last_offer,
+                                                      "</br>Rank:", asset_rank,
+                                                      "</br>Rarity:", asset_rarity,
+                                                      "</br>Market:", market,
+                                                      "</br>Sc:", sc)))) +
+  geom_point(color = "steelblue4", alpha = .6) +
+  scale_x_reverse(breaks = scale_x, expand = c(0.03, 0)) +
+  scale_y_continuous(breaks = scale_y) +
+  labs(x = "Rank", y = "Listing price", color = "Market", shape = "Smart contract") +
+  theme(legend.title = element_text(size = 10))
+
+ggplotly(gg, tooltip = "text") %>% 
+  layout(legend = list(x = .025, y = .97, bgcolor = 'rgba(255,255,255,0.6)'),
+         xaxis = list(tickangle = 45)) %>%
+  onRender(js)
+```
+
+> Only listings below 6000 ada are displayed. Try clicking on the legend or datapoints.
+
+### Log scale
+```{r}
+X <- DT[price < 6000]
+scale_x <- c(seq(0, 2000, 250), seq(2500, 10000, 500))
+scale_x[scale_x == 0] <- 1
+scale_x[scale_x == 10000] <- 9999
+scale_y <- c(seq(0, 250, 25), seq(250, 500, 50), seq(500, 2000, 250), seq(2000, 6000, 500))
+
+gg <- ggplot(X, aes(asset_rank, price, shape = sc, customdata = link,
+                    text = paste0(asset,
+                                  "</br></br>", paste("Price:", price,
+                                                      "</br>Last offer:", last_offer,
+                                                      "</br>Rank:", asset_rank,
+                                                      "</br>Rarity:", asset_rarity,
+                                                      "</br>Market:", market,
+                                                      "</br>Sc:", sc)))) +
+  geom_point(color = "steelblue4", alpha = .6) +
+  scale_x_reverse(breaks = scale_x, expand = c(0.03, 0)) +
+  scale_y_continuous(breaks = scale_y, trans = "log2") +
+  labs(x = "Rank", y = "Listing price (log)", color = "Market", shape = "Smart contract") +
+  theme(legend.title = element_text(size = 10))
+
+ggplotly(gg, tooltip = "text") %>% 
+  layout(legend = list(x = .025, y = .97, bgcolor = 'rgba(255,255,255,0.6)'),
+         xaxis = list(tickangle = 45)) %>%
+  onRender(js)
+```
+
+> Only listings below 6000 ada are displayed. Try clicking on the legend or datapoints.
+
+## Column 2 {data-width=500, .tabset}
+### Floor listings by rank range
+```{r}
+X <- DT[, .SD[price == min(price)], rank_range][order(rank_range)]
+X[, img := sprintf('<img src="%s%d.png" class="img_html">', img_link, asset_number)]
+X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, asset_number)]
+
+X <- X[, .(rank_range, img, price, asset_rank, asset_rarity, sc, market, asset_traits_num, asset_traits)]
+X <- X[complete.cases(X)]
+
+datatable(X, class = 'compact stripe hover',
+          options = list(pageLength = 100,
+                         scrollY = '100%',
+                         bLengthChange = FALSE,
+                         bPaginate = FALSE,
+                         info = FALSE,
+                         columnDefs = list(list(className = 'dt-right', targets = "_all"))),
+          colnames = c("Rank</br>range", "Asset", "Price", "Rank", "Rarity", "Sc", "Market",
+                       "Num.</br>traits", "Traits"),
+          rownames = FALSE,
+          escape = FALSE) %>%
+  formatStyle(columns = 1:ncol(X), fontSize = '90%')
+```
+
+> Tip: Click on the image to be open the listing.
+
+### Listings stats by rank range
+```{r}
+X <- DT[, .(num_assets = .N,
+            min_price = min(price),
+            quant_05_price = quantile(price, probs = .05, names = FALSE),
+            quant_10_price = quantile(price, probs = .10, names = FALSE),
+            quant_25_price = quantile(price, probs = .25, names = FALSE),
+            quant_50_price = quantile(price, probs = .50, names = FALSE),
+            quant_75_price = quantile(price, probs = .75, names = FALSE),
+            quant_90_price = quantile(price, probs = .90, names = FALSE),
+            quant_95_price = quantile(price, probs = .95, names = FALSE),
+            max_price = max(price)), rank_range][order(rank_range)]
+
+.cols <- names(X)[!(names(X) %like% "_range")]
+X[, (.cols) := lapply(.SD, function(x) sprintf("%.f", x)), .SDcols = .cols]
+X <- X[complete.cases(X)]
+
+datatable(X, class = 'compact stripe hover',
+          options = list(pageLength = 100,
+                         scrollY = '100%',
+                         bLengthChange = FALSE,
+                         bPaginate = FALSE,
+                         info = FALSE,
+                         columnDefs = list(list(className = 'dt-right', targets = "_all"))),
+          colnames = c("Stats</br>range", "Num.</br>offers", "Min.</br>price",
+                       "Price</br>Q5%", "Price</br>Q10%", "Price</br>Q25%", "Price</br>Q50%",
+                       "Price</br>Q75%", "Price</br>Q90%", "Price</br>Q95%", "Max.</br>price"),
+          rownames = FALSE,
+          escape = FALSE) %>%
+  formatStyle(columns = 1:ncol(X), fontSize = '90%')
+```
+
+> `Q` = Quantiles. For instance, `Q05%` means that only 5% of the listings prices are equal or below that price.
+
+<!-- # Rarity {data-icon="ion-star"} -->
+<!-- ## Column 1 {data-width=500, .tabset} -->
+<!-- ### Linear scale -->
+<!-- ```{r} -->
+<!-- X <- DT[price < 6000 & asset_rarity < 650] -->
+<!-- gg <- ggplot(X, aes(asset_rarity, price, shape = sc, customdata = link, -->
+<!--                     text = paste0(asset, -->
+<!--                                   "</br></br>", paste("Price:", price, -->
+<!--                                                       "</br>Last offer:", last_offer, -->
+<!--                                                       "</br>Rank:", asset_rank, -->
+<!--                                                       "</br>Rarity:", asset_rarity, -->
+<!--                                                       "</br>Market:", market, -->
+<!--                                                       "</br>Sc:", sc)))) + -->
+<!--   geom_point(color = "steelblue4", alpha = .6) + -->
+<!--   scale_x_continuous(n.breaks = 15) + -->
+<!--   scale_y_continuous(n.breaks = 15) + -->
+<!--   labs(x = "Rarity", y = "Listing price", color = "Market", shape = "Smart contract") + -->
+<!--   theme(legend.title = element_text(size = 10)) -->
+
+<!-- ggplotly(gg, tooltip = "text") %>%  -->
+<!--   layout(legend = list(x = .025, y = .97, bgcolor = 'rgba(255,255,255,0.6)'), -->
+<!--          xaxis = list(tickangle = 45)) %>% -->
+<!--   onRender(js) -->
+<!-- ``` -->
+
+<!-- > Only listings < 6000 ada and with rarity < 650 are displayed. Try clicking on the legend or datapoints. -->
+
+<!-- ### Log scale -->
+<!-- ```{r} -->
+<!-- X <- DT[price < 6000] -->
+<!-- gg <- ggplot(X, aes(asset_rarity, price, shape = sc, customdata = link, -->
+<!--                     text = paste0(asset, -->
+<!--                                   "</br></br>", paste("Price:", price, -->
+<!--                                                       "</br>Last offer:", last_offer, -->
+<!--                                                       "</br>Rank:", asset_rank, -->
+<!--                                                       "</br>Rarity:", asset_rarity, -->
+<!--                                                       "</br>Market:", market, -->
+<!--                                                       "</br>Sc:", sc)))) + -->
+<!--   geom_point(color = "steelblue4", alpha = .6) + -->
+<!--   scale_x_continuous(n.breaks = 15, trans = "log2") + -->
+<!--   scale_y_continuous(n.breaks = 20, trans = "log2") + -->
+<!--   labs(x = "Rarity (log)", y = "Listing price (log)", color = "Market", shape = "Smart contract") + -->
+<!--   theme(legend.title = element_text(size = 10)) -->
+
+<!-- ggplotly(gg, tooltip = "text") %>%  -->
+<!--   layout(legend = list(x = .025, y = .97, bgcolor = 'rgba(255,255,255,0.6)'), -->
+<!--          xaxis = list(tickangle = 45)) %>% -->
+<!--   onRender(js) -->
+<!-- ``` -->
+
+<!-- > Only listings < 6000 ada are displayed. Try clicking on the legend or datapoints. -->
+
+<!-- ## Column 2 {data-width=500, .tabset} -->
+<!-- ### Floor listings by rarity range -->
+<!-- ```{r} -->
+<!-- X <- DT[, .SD[price == min(price)], rarity_range][order(-rarity_range)] -->
+<!-- X[, img := sprintf('<img src="%s%d.png" class="img_html">', img_link, asset_number)] -->
+<!-- X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, asset_number)] -->
+
+<!-- X <- X[, .(rarity_range, img, price, asset_rank, asset_rarity, sc, market, asset_traits_num, asset_traits)] -->
+<!-- X <- X[complete.cases(X)] -->
+
+<!-- datatable(X, class = 'compact stripe hover', -->
+<!--           options = list(pageLength = 100, -->
+<!--                          scrollY = '100%', -->
+<!--                          bLengthChange = FALSE, -->
+<!--                          bPaginate = FALSE, -->
+<!--                          info = FALSE, -->
+<!--                          columnDefs = list(list(className = 'dt-right', targets = "_all"))), -->
+<!--           colnames = c("Rarity</br>range", "Asset", "Price", "Rank" , "Rarity", "Sc", "Market", -->
+<!--                        "Num.</br>traits", "Traits"), -->
+<!--           rownames = FALSE, -->
+<!--           escape = FALSE) %>% -->
+<!--   formatStyle(columns = 1:ncol(X), fontSize = '90%') -->
+<!-- ``` -->
+
+<!-- > Tip: Click on the image to be open the listing. -->
+
+<!-- ### Listings stats by rarity range -->
+<!-- ```{r} -->
+<!-- X <- DT[, .(num_assets = .N, -->
+<!--             min_price = min(price), -->
+<!--             quant_05_price = quantile(price, probs = .05, names = FALSE), -->
+<!--             quant_10_price = quantile(price, probs = .10, names = FALSE), -->
+<!--             quant_25_price = quantile(price, probs = .25, names = FALSE), -->
+<!--             quant_50_price = quantile(price, probs = .50, names = FALSE), -->
+<!--             quant_75_price = quantile(price, probs = .75, names = FALSE), -->
+<!--             quant_90_price = quantile(price, probs = .90, names = FALSE), -->
+<!--             quant_95_price = quantile(price, probs = .95, names = FALSE), -->
+<!--             max_price = max(price)), rarity_range][order(-rarity_range)] -->
+
+<!-- .cols <- names(X)[!(names(X) %like% "_range")] -->
+<!-- X[, (.cols) := lapply(.SD, function(x) sprintf("%.f", x)), .SDcols = .cols] -->
+<!-- X <- X[complete.cases(X)] -->
+
+<!-- datatable(X, class = 'compact stripe hover', -->
+<!--           options = list(pageLength = 100, -->
+<!--                          scrollY = '100%', -->
+<!--                          bLengthChange = FALSE, -->
+<!--                          bPaginate = FALSE, -->
+<!--                          info = FALSE, -->
+<!--                          columnDefs = list(list(className = 'dt-right', targets = "_all"))), -->
+<!--           colnames = c("Rarity</br>range", "Num.</br>offers", "Min.</br>price", -->
+<!--                        "Price</br>Q5%", "Price</br>Q10%", "Price</br>Q25%", "Price</br>Q50%", -->
+<!--                        "Price</br>Q75%", "Price</br>Q90%", "Price</br>Q95%", "Max.</br>price"), -->
+<!--           rownames = FALSE, -->
+<!--           escape = FALSE) %>% -->
+<!--   formatStyle(columns = 1:ncol(X), fontSize = '90%') -->
+<!-- ``` -->
+
+<!-- > `Q` = Quantiles. For instance, `Q05%` means that only 5% of the listings prices are equal or below that price. -->
+
+# Traits {data-icon="ion-android-color-palette"}
+## Column 1 {data-width=400, .tabset}
+### Coming soon
+<!-- ### Floor listings by trait -->
+<!-- ```{r} -->
+<!-- X <- DTL[, .SD[price == min(price)], trait][order(trait)] -->
+<!-- X[, img := asset_number] -->
+<!-- X[, img := sprintf( -->
+<!--   '<img src="../img/mocossi/mocossi%s.png" class="img_html">', img -->
+<!-- )] -->
+<!-- X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, asset_number)] -->
+
+<!-- X <- X[, .(trait_category, trait, img, price, asset_rank, asset_rarity, -->
+<!--            sc, market, asset_traits_num, asset_traits)] -->
+
+<!-- X <- X[order(trait_category, trait)] -->
+<!-- X <- X[complete.cases(X)] -->
+
+<!-- datatable(X, class = 'dt-right compact stripe hover', -->
+<!--           options = list(pageLength = 100, -->
+<!--                          scrollY = '100%', -->
+<!--                          bLengthChange = FALSE, -->
+<!--                          bPaginate = FALSE, -->
+<!--                          info = FALSE), -->
+<!--           colnames = c("Trait</br>category", "Trait", "Asset", "Price", "Rank",  "Rarity", "Sc", "Market", -->
+<!--                        "Num.</br>traits", "Traits"), -->
+<!--           rownames = FALSE, -->
+<!--           escape = FALSE) %>% -->
+<!--   formatStyle(columns = 1:ncol(X), fontSize = '90%') -->
+<!-- ``` -->
+
+<!-- ### Listings stats by trait -->
+<!-- ```{r} -->
+<!-- X <- DTL[, .(num_assets = .N, -->
+<!--              min_rank = min(asset_rank), -->
+<!--              min_rarity = min(asset_rarity), -->
+<!--              min_price = min(price), -->
+<!--              quant_05_price = quantile(price, probs = .05, names = FALSE), -->
+<!--              quant_10_price = quantile(price, probs = .10, names = FALSE), -->
+<!--              quant_25_price = quantile(price, probs = .25, names = FALSE), -->
+<!--              quant_50_price = quantile(price, probs = .50, names = FALSE), -->
+<!--              quant_75_price = quantile(price, probs = .75, names = FALSE), -->
+<!--              quant_90_price = quantile(price, probs = .90, names = FALSE), -->
+<!--              quant_95_price = quantile(price, probs = .95, names = FALSE), -->
+<!--              max_price = max(price)), .(trait_category, trait)][order(trait_category, trait)] -->
+
+<!-- .cols <- names(X)[!(names(X) %like% "trait")] -->
+<!-- X[, (.cols) := lapply(.SD, function(x) sprintf("%.f", x)), .SDcols = .cols] -->
+<!-- X <- X[complete.cases(X)] -->
+
+<!-- datatable(X, class = 'dt-right compact stripe hover', -->
+<!--           options = list(pageLength = 100, -->
+<!--                          scrollY = '100%', -->
+<!--                          bLengthChange = FALSE, -->
+<!--                          bPaginate = FALSE, -->
+<!--                          info = FALSE), -->
+<!--           colnames = c("Trait</br>category", "Trait", "Num.</br>offers",  -->
+<!--                        "Min.</br>rank", "Min.</br>rarity", "Min.</br>price", -->
+<!--                        "Price</br>Q5%", "Price</br>Q10%", "Price</br>Q25%", "Price</br>Q50%", -->
+<!--                        "Price</br>Q75%", "Price</br>Q90%", "Price</br>Q95%", "Max.</br>price"), -->
+<!--           rownames = FALSE, -->
+<!--           escape = FALSE) %>% -->
+<!--   formatStyle(columns = 1:ncol(X), fontSize = '90%') -->
+<!-- ``` -->
+
+# Search {data-icon="ion-android-search"}
+## Column 1
+### Find your NFT rank and rarity
+```{r}
+# ion-information-circled
+X <- RAR[, .(asset_name = paste0("SpaceApe #", asset_number),
+             asset_rank, asset_rarity, asset_traits_num = NA, asset_traits = NA)]
+datatable(X, class = 'compact stripe hover',
+          options = list(pageLength = 30,
+                         scrollY = '100%',
+                         bLengthChange = FALSE,
+                         bPaginate = TRUE,
+                         info = TRUE,
+                         columnDefs = list(list(className = 'dt-right', targets = "_all"))),
+          colnames = c("Asset", "Rank", "Rarity", "Num.</br>traits", "Traits"),
+          rownames = FALSE,
+          escape = FALSE) %>%
+  formatStyle(columns = 1:ncol(X), fontSize = '90%')
+```
+
+> Use the search box to look for your NFT. For example, search `#3000`.
+
+# Support this project {data-icon="ion-heart"}
+## Column 1
+### Thanks for your support!
+You can support this project by spreading the word about it to the CNFT community! :-)
+
+Tips would also be greatly appreciated! This would encourage me to maintain and improve the website (for instance, to get a better hosting service).  
+
+![Tip me](tipme.svg){width=200px}  
+**addr1qx04gwr9kazlpnm6t8a8h0pggk440zs3fdayct732a0wwwd3usryhnh52pevj5xy7cgp9d4jnywar6g0tnct58dyfukszl25n8** 
+
+# about {.hidden}
+## Columun 1
+### About the website
+#### The data
+- Listings data is comes from <a href="https://cnft.io/" target="_blank">cnft.io</a> and <a href="https://www.jpg.store/" target="_blank">jpg.store</a> marketplaces.
+- Rank and rarity scores come from <a href="https://cnft.tools/" target="_blank">cnft.tools</a>.
+- The website is updated every ~10mins. You need to hit `F5` to manually see the updates on the website.
+
+#### Comming soon
+- Only the *listings* are currently analyzed, but the *sales* will be soon included
+
+#### Disclaimer
+- This is an early version, so there might be some bugs! Use at your own risk
+
+## Columun 2
+### Resources
+- <a href="https://spaceapeclub.io/" target="_blank">spaceapeclub.io</a>
+- <a href="https://cnft.tools/" target="_blank">cnft.tools</a>
+- <a href="https://www.cnftjungle.io/" target="_blank">cnftjungle.io</a>
+- <a href="https://www.belowfloor.io/" target="_blank">belowfloor.io</a>
+- <a href="https://opencnft.io/" target="_blank">opencnft.io</a>
+
+## Column 3
+### Changelog
+#### Version 1.0
+- This is the first version of this website! More to come soon
+
+#### Version 1.1
+- Added the Mocossi project
+- Improvements on how often the website updates
+#### Version 1.2
+- Sweep floor section added
+
+#### Version 1.3
+- Added the Space Ape Club project
+
+#### Version 1.4
+- Improved the floor section
+- Removed the rarity section as it was very much redundant with the rank section
+
+#### Version 1.5
+- Added the Chilled Kongs project
+
+### About me
+- I am passionate about crypto, (c)nfts, stats, and programming!
+- Hit me on discord: <a href="https://discord.com/users/K2#8332/" target="_blank">K2#8332</a>
+- Follow me on Twitter: <a href="https://twitter.com/cnftstats" target="_blank">@cnftstats</a>
+
+
+<!-- https://ionic.io/ionicons/v2/cheatsheet.html -->
