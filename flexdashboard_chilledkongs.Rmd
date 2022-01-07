@@ -58,10 +58,10 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 
 # Sidebar {data-width=70, .sidebar}
 <ul id="sidebar_ul">
-<li><a href="https://cnftstats.github.io/html/bcrc.html">BCRC</a></li>
-<li><a href="https://cnftstats.github.io/html/mocossi.html">Mocossi</a></li>
-<li><a href="https://cnftstats.github.io/html/sac.html">SpaceApe</a></li>
-<li id="currentProject"><a href="https://cnftstats.github.io/html/chilledkongs.html">ChilledKongs</a></li>
+<li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
+<li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
+<li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
+<li id="currentProject"><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
