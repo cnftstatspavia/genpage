@@ -106,6 +106,8 @@ ggplot(X, aes(x_label, N, fill = market)) +
         plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
 ```
 
+*Note that since there are thousands of listings for Pavia, it takes more time to update the plot than the other projects*.
+
 ## Column 2 {data-width=350}
 ### Sweep that floor: Lowest listings
 ```{r}
