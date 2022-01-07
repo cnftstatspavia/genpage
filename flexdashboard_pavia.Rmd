@@ -30,9 +30,6 @@ library(DT)
 
 # Data
 DT <- readRDS("data/DT.rds")
-# DTL <- readRDS("data/DTL.rds")
-# RAR <- readRDS("data/RAR_chilledkongs.rds")
-# traits <- readRDS("data/traits_chilledkongs.rds")
 
 img_link <- "https://raw.githubusercontent.com/cnftstats/images/main/chilledkongs/chilledkongs"
 
@@ -58,11 +55,11 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 
 # Sidebar {data-width=70, .sidebar}
 <ul id="sidebar_ul">
-<li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
-<li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
-<li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
-<li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
-<li id="currentProject"><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
+  <li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
+  <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
+  <li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
+  <li id="currentProject"><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
+  <li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
@@ -471,7 +468,7 @@ Tips would also be greatly appreciated! This would encourage me to maintain and 
 #### The data
 - Listings data is comes from <a href="https://cnft.io/" target="_blank">cnft.io</a> and <a href="https://www.jpg.store/" target="_blank">jpg.store</a> marketplaces.
 - Rank and rarity scores come from <a href="https://cnft.tools/" target="_blank">cnft.tools</a>.
-- The website is updated every ~10mins. You need to hit `F5` to manually see the updates on the website.
+- The website is updated every ~10mins (expect for the Pavia projects which takes more time). You need to hit `F5` to manually see the updates on the website.
 
 #### Comming soon
 - Only the *listings* are currently analyzed, but the *sales* will be soon included
@@ -481,11 +478,22 @@ Tips would also be greatly appreciated! This would encourage me to maintain and 
 
 ## Columun 2
 ### Other useful websites
+#### Official websites
+- <a href="https://bosscatrocketclub.com/" target="_blank">bosscatrocketclub.com</a>
 - <a href="https://chilledkongs.com/" target="_blank">chilledkongs.com</a>
+- <a href="https://mocossi.com/" target="_blank">mocossi.com</a>
+- <a href="https://spaceapeclub.io/" target="_blank">spaceapeclub.io</a>
+- <a href="https://www.pavia.io/" target="_blank">pavia.io</a>
+
+#### General tools
+- <a href="https://opencnft.io/" target="_blank">opencnft.io</a>
 - <a href="https://cnft.tools/" target="_blank">cnft.tools</a>
 - <a href="https://www.cnftjungle.io/" target="_blank">cnftjungle.io</a>
 - <a href="https://www.belowfloor.io/" target="_blank">belowfloor.io</a>
-- <a href="https://opencnft.io/" target="_blank">opencnft.io</a>
+
+#### Specific tools
+- <a href="https://pavia.3dkiwi.io/" target="_blank">Pavia heatmap</a>
+
 
 ## Column 3
 ### Changelog
@@ -515,3 +523,7 @@ Tips would also be greatly appreciated! This would encourage me to maintain and 
 - I am passionate about crypto, (c)nfts, stats, and programming!
 - Hit me on discord: <a href="https://discord.com/users/K2#8332/" target="_blank">K2#8332</a>
 - Follow me on Twitter: <a href="https://twitter.com/cnftstats" target="_blank">@cnftstats</a>
+
+
+<!-- https://ionic.io/ionicons/v2/cheatsheet.html -->
+<!-- https://www.qrcode-monkey.com/#text -->
