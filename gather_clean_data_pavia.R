@@ -50,7 +50,11 @@ query_all <- function(url, project) {
   out
 }
 
+print("ok 1")
+
 CNFT <- query_all(api_link, project) |> lapply(data.table) |> rbindlist(fill = TRUE)
+
+print("ok 2")
 
 CNFT <- CNFT[asset.policyId == policy_id]
 CNFT[, asset        := asset.metadata.name]
@@ -84,11 +88,16 @@ JPG[, price        := price/10**6]
 JPG[, sc           := "yes"]
 JPG[, market       := "jpg.store"]
 
+print("ok 3")
+
 JPG <- JPG[, .(asset, type = "listing", price, last_offer = NA, sc, market, link)]
 
 # Merge info
 DT <- rbindlist(list(CNFT, JPG), fill = TRUE, use.names = TRUE)
 
+print("ok 4")
 
 # Save ---------------------------------------------------------------------------------------------
 saveRDS(DT, file = "data/DT.rds")
+
+print("ok 5")
