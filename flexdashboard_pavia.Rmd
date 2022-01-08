@@ -53,7 +53,7 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 }
 ```
 
-# Sidebar {data-width=70, .sidebar}
+# Sidebar {data-width=80, .sidebar}
 <ul id="sidebar_ul">
   <li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
   <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>

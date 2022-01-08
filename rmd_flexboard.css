@@ -12,13 +12,17 @@ table.dataTable thead th {
 
 }
 
+.yscrollable {
+  overflow-y: scroll;
+}
+
 #currentProject, #currentProject:hover {
   font-weight: bold !important;
   background-color: rgba(104, 53, 129, 0.1) !important;
 }
 
 #sidebar {
-  width: 80px !important;
+  /*width: 80px !important;*/
   padding: 0;
   margin: 0;
 }
