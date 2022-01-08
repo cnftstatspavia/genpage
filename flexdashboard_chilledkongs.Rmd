@@ -1,5 +1,5 @@
 ---
-title: "Pavia Dashboard"
+title: "ChilledKongs Dashboard"
 date: "</br>Updated: `r format(as.POSIXlt(Sys.time(), tz = 'UTC'), '%b-%d %H:%M UTC')`"
 output: 
   flexdashboard::flex_dashboard:
@@ -30,6 +30,9 @@ library(DT)
 
 # Data
 DT <- readRDS("data/DT.rds")
+# DTL <- readRDS("data/DTL.rds")
+RAR <- readRDS("data/RAR_chilledkongs.rds")
+# traits <- readRDS("data/traits_chilledkongs.rds")
 
 img_link <- "https://raw.githubusercontent.com/cnftstats/images/main/chilledkongs/chilledkongs"
 
@@ -56,9 +59,9 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 # Sidebar {data-width=80, .sidebar}
 <ul id="sidebar_ul">
   <li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
-  <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
+  <li id="currentProject"><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
   <li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
-  <li id="currentProject"><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
+  <li><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
   <li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
 </ul>
 
@@ -68,17 +71,19 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 ```{r fig.width=8}
 X <- copy(DT)
 X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
-X[price %between% c(1000, 1999), price_range := trunc(price/100)*100]
-X[price %between% c(2000, 14999), price_range := trunc(price/1000)*1000]
-X[price >= 15000, price_range := 15000]
+X[price %between% c(1000, 1999), price_range := trunc(price/200)*200]
+X[price %between% c(2000, 4999), price_range := trunc(price/500)*500]
+X[price %between% c(5000, 9999), price_range := trunc(price/2000)*2000]
+X[price >= 10000, price_range := 10000]
 X <- X[complete.cases(price_range), .(price_range, market)]
 num_listings <- nrow(X)
 
 X <- X[, .N, .(price_range, market)][order(price_range)]
-X[price_range %between% c(0, 999),      x_label := paste0(price_range, "-", price_range + (50-1))]
-X[price_range %between% c(1000, 1999),  x_label := paste0(price_range, "-", price_range + (100-1))]
-X[price_range %between% c(2000, 14999), x_label := paste0(price_range, "-", price_range + (1000-1))]
-X[price_range >= 15000,                 x_label := "15000+"]
+X[price_range %between% c(0, 999),     x_label := paste0(price_range, "-", price_range + (50-1))]
+X[price_range %between% c(1000, 1999), x_label := paste0(price_range, "-", price_range + (200-1))]
+X[price_range %between% c(2000, 4999), x_label := paste0(price_range, "-", price_range + (500-1))]
+X[price_range %between% c(5000, 9999), x_label := paste0(price_range, "-", price_range + (2000-1))]
+X[price_range > 9999,                  x_label := "10000+"]
 
 .X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
 X[, x_label := factor(x_label, levels = .X$x_label)]
@@ -106,14 +111,14 @@ ggplot(X, aes(x_label, N, fill = market)) +
         plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
 ```
 
-*Note that since there are thousands of listings for Pavia, it takes more time to update the plot than the other projects*.
-
 ## Column 2 {data-width=350}
 ### Sweep that floor: Lowest listings
 ```{r}
-X <- DT[order(price)][1:30]
-X[, asset := sprintf("<a href='%s' target='_blank'>%s</a>", link, asset)]
-X <- X[, .(asset, price, sc, market)]
+X <- DT[order(price)][1:15]
+X[, img := sprintf('<img src="%s%d.png" class="img_html">', img_link, asset_number)]
+X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, asset_number)]
+
+X <- X[, .(img, price, asset_rank, asset_rarity, sc, market)]
 X <- X[complete.cases(X)]
 
 datatable(X, class = 'compact stripe hover nowrap',
@@ -124,7 +129,7 @@ datatable(X, class = 'compact stripe hover nowrap',
                          bPaginate = FALSE,
                          info = FALSE,
                          columnDefs = list(list(className = 'dt-right', targets = "_all"))),
-          colnames = c("Asset", "Price", "Sc", "Market"),
+          colnames = c("Asset", "Price", "Rank", "Rarity", "Sc", "Market"),
           rownames = FALSE,
           escape = FALSE) %>%
   formatStyle(columns = 1:ncol(X), fontSize = '90%')
@@ -132,7 +137,7 @@ datatable(X, class = 'compact stripe hover nowrap',
 
 # Rank {data-icon="fa-signal"}
 ## Column 1 {data-width=500, .tabset}
-### Not available
+### Comming soon
 <!-- ```{r} -->
 <!-- X <- DT[price < 6000] -->
 <!-- scale_x <- c(seq(0, 2000, 250), seq(2500, 10000, 500)) -->
@@ -215,7 +220,7 @@ datatable(X, class = 'compact stripe hover nowrap',
 <!--   formatStyle(columns = 1:ncol(X), fontSize = '90%') -->
 <!-- ``` -->
 
-<!-- > Tip: Click on the image to be open the listing. -->
+<!-- > Tip: Click on the image to open the listing. -->
 
 <!-- ### Listings stats by rank range -->
 <!-- ```{r} -->
@@ -331,7 +336,7 @@ datatable(X, class = 'compact stripe hover nowrap',
 <!--   formatStyle(columns = 1:ncol(X), fontSize = '90%') -->
 <!-- ``` -->
 
-<!-- > Tip: Click on the image to be open the listing. -->
+<!-- > Tip: Click on the image to open the listing. -->
 
 <!-- ### Listings stats by rarity range -->
 <!-- ```{r} -->
@@ -369,7 +374,7 @@ datatable(X, class = 'compact stripe hover nowrap',
 
 # Traits {data-icon="ion-android-color-palette"}
 ## Column 1 {data-width=400, .tabset}
-### Not available
+### Coming soon
 <!-- ### Floor listings by trait -->
 <!-- ```{r} -->
 <!-- X <- DTL[, .SD[price == min(price)], trait][order(trait)] -->
@@ -434,7 +439,7 @@ datatable(X, class = 'compact stripe hover nowrap',
 
 # Search {data-icon="ion-android-search"}
 ## Column 1
-### Not available
+### Comming soon
 <!-- ### Find your NFT rank and rarity -->
 <!-- ```{r} -->
 <!-- # ion-information-circled -->
