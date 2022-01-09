@@ -1,13 +1,12 @@
 ---
 title: "Pavia Dashboard"
-date: "</br>Updated: `r format(as.POSIXlt(Sys.time(), tz = 'UTC'), '%b-%d %H:%M UTC')`"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
     navbar:
+      - { title: "Twitter", href: "https://twitter.com/cnftstats"}
       - { title: "About", href: "#about" }
-      - { title: "Discord", href: "https://discord.gg/3Sn9pyjw"}
     social: ["menu"]
     css: rmd_flexboard.css
     self_contained: TRUE
@@ -51,6 +50,18 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
   n <- names(Y)
   X[Y, `:=`((n), mget(paste0("i.", n))), on = onCol]
 }
+```
+
+<!-- Add live timestamp -->
+```{r results='asis'}
+timestamp <- as.numeric(Sys.time())
+cat("
+<script>
+$(document).ready(function(){
+  $('.navbar-author').after('</br><span id=", '"updatedat"', ">Updated: <span data-livestamp=", '"', timestamp, '"', "></span></span>');
+});
+</script>
+", sep = "")
 ```
 
 # Sidebar {data-width=80, .sidebar}

@@ -12,10 +12,6 @@ table.dataTable thead th {
 
 }
 
-.yscrollable {
-  overflow-y: scroll;
-}
-
 #currentProject, #currentProject:hover {
   font-weight: bold !important;
   background-color: rgba(104, 53, 129, 0.1) !important;
@@ -54,6 +50,14 @@ table.dataTable thead th {
 
 .navbar-brand {
   line-height: 10px !important;
+}
+
+
+#updatedat {
+  margin: 0;
+  padding: 0;
+  color: rgb(230, 230, 230, .6) !important;
+  font-size: 12px !important;
 }
 
 .navbar-author {  /* updated at... */

@@ -1,13 +1,12 @@
 ---
 title: "ChilledKongs Dashboard"
-date: "</br>Updated: `r format(as.POSIXlt(Sys.time(), tz = 'UTC'), '%b-%d %H:%M UTC')`"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
     navbar:
+      - { title: "Twitter", href: "https://twitter.com/cnftstats"}
       - { title: "About", href: "#about" }
-      - { title: "Discord", href: "https://discord.gg/3Sn9pyjw"}
     social: ["menu"]
     css: rmd_flexboard.css
     self_contained: TRUE
@@ -30,9 +29,8 @@ library(DT)
 
 # Data
 DT <- readRDS("data/DT.rds")
-# DTL <- readRDS("data/DTL.rds")
 RAR <- readRDS("data/RAR_chilledkongs.rds")
-# traits <- readRDS("data/traits_chilledkongs.rds")
+DTS <- readRDS("data/DTS.rds")
 
 img_link <- "https://raw.githubusercontent.com/cnftstats/images/main/chilledkongs/chilledkongs"
 
@@ -56,6 +54,18 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 }
 ```
 
+<!-- Add live timestamp -->
+```{r results='asis'}
+timestamp <- as.numeric(Sys.time())
+cat("
+<script>
+$(document).ready(function(){
+  $('.navbar-author').after('</br><span id=", '"updatedat"', ">Updated: <span data-livestamp=", '"', timestamp, '"', "></span></span>');
+});
+</script>
+", sep = "")
+```
+
 # Sidebar {data-width=80, .sidebar}
 <ul id="sidebar_ul">
   <li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
@@ -66,7 +76,7 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
-## Column 1 {data-width=650}
+## Column 1 {data-width=650 .tabset}
 ### Price distribution
 ```{r fig.width=8}
 X <- copy(DT)
@@ -110,6 +120,57 @@ ggplot(X, aes(x_label, N, fill = market)) +
         plot.caption = element_text(color = "#008B8B", vjust = +17, hjust = 0, size = 8),
         plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
 ```
+
+### Sales distribution
+```{r fig.height=8, fig.width=10}
+X <- copy(DTS)
+X[, sold_time := trunc(sold_at_days)]
+X[, sold_time := fcase(trunc(sold_at_days) == 0, "0-24h ago",
+                       trunc(sold_at_days) == 1, "24-48h ago",
+                       trunc(sold_at_days) == 2, "48-72h ago")]
+X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
+X[price %between% c(1000, 1999), price_range := trunc(price/200)*200]
+X[price %between% c(2000, 4999), price_range := trunc(price/500)*500]
+X[price %between% c(5000, 9999), price_range := trunc(price/2000)*2000]
+X[price >= 10000, price_range := 10000]
+X <- X[complete.cases(price_range), .(price_range, market, sold_time)]
+X <- X[, .N, .(price_range, market, sold_time)][order(price_range)]
+X[, sold_time := sprintf("%s\nSales: %s", sold_time, sum(N)), sold_time]
+X[price_range %between% c(0, 999),     x_label := paste0(price_range, "-", price_range + (50-1))]
+X[price_range %between% c(1000, 1999), x_label := paste0(price_range, "-", price_range + (200-1))]
+X[price_range %between% c(2000, 4999), x_label := paste0(price_range, "-", price_range + (500-1))]
+X[price_range %between% c(5000, 9999), x_label := paste0(price_range, "-", price_range + (2000-1))]
+X[price_range > 9999,                  x_label := "10000+"]
+
+.X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
+X[, x_label := factor(x_label, levels = .X$x_label)]
+X[, market := factor(market, levels = c("jpg.store", "cnft.io"))]
+
+ggplot(X, aes(x_label, N, fill = market)) +
+  facet_grid(sold_time~.) +
+  geom_hline(yintercept = 0, color = "grey70") +
+  geom_bar(stat = "identity", alpha = .8) +
+  geom_text(aes(label = stat(y), group = x_label),
+            stat = 'summary', fun = sum, vjust = -.5, hjust = +.55,
+            color = "springgreen4", size = 3) +
+  scale_y_continuous(expand = c(0, 20)) +
+  scale_fill_manual(values = c("jpg.store" = "springgreen3", "cnft.io" = "springgreen4")) +
+  labs(x = "Price range", y = "Number of sales", fill = "",
+       caption = "Source: https://cnftstats.github.io/") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = -45, vjust = +.5, hjust = 0,
+                                   color = "grey50", size = 8),
+        axis.text.y = element_text(color = "grey50", size = 8),
+        axis.title = element_text(color = "grey30", size = 9),
+        legend.position = "bottom", legend.justification = 'right', legend.direction = "horizontal",
+        legend.text = element_text(color = "grey50", size = 9),
+        legend.key.height = unit(0.5, "points"), legend.key.width = unit(10, "points"),
+        legend.box.spacing = unit(-10, "points"),
+        plot.caption = element_text(color = "#008B8B", vjust = +17, hjust = 0, size = 8),
+        # plot.margin = unit(c(0, 15, 0, 0), units = "pt"),
+        panel.spacing.y = unit(1, "lines"))
+```
+
 
 ## Column 2 {data-width=350}
 ### Sweep that floor: Lowest listings
@@ -524,8 +585,11 @@ Tips would also be greatly appreciated! This would encourage me to maintain and 
 #### Version 1.5
 - Added the Chilled Kongs project
 
-### Version 1.6
+#### Version 1.6
 - Added the Pavia project (not that it takes more time to update than the other projects)
+
+#### Version 1.7
+- Stats about sales
 
 ### About me
 - I am passionate about crypto, (c)nfts, stats, and programming!
