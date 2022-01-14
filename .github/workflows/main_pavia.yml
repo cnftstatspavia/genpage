@@ -49,3 +49,16 @@ jobs:
         remote_repository: https://github.com/cnftstats/cnftstats.github.io
         access_token: ${{ secrets.API_TOKEN_GITHUB }}
         force: true
+
+    # Push files (listings evolution data/DTE.rds)
+    - name: Commit files data
+      run: |
+        git config --local user.name actions-user
+        git config --local user.email "actions@github.com"
+        git add data/DTE_pavia.rds
+        git commit -am "DTE updated $(date)"
+        git push origin
+      env:
+        REPO_KEY: ${{secrets.GITHUB_TOKEN}}
+        username: github-actions
+        
