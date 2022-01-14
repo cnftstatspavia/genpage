@@ -29,8 +29,9 @@ library(DT)
 
 # Data
 DT <- readRDS("data/DT.rds")
+DTS <- readRDS("data/DTS.rds")
+DTE <- readRDS("data/DTE_pavia.rds")
 
-img_link <- "https://raw.githubusercontent.com/cnftstats/images/main/chilledkongs/chilledkongs"
 
 # javascript (clickable datapoints url)
 # https://stackoverflow.com/questions/51681079/how-to-make-scatterplot-points-open-a-hyperlink-using-ggplotly-r
@@ -74,8 +75,11 @@ $(document).ready(function(){
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
-## Column 1 {data-width=650}
+## Column 1 {data-width=650, .tabset}
 ### Price distribution
+
+*Note that since there are thousands of listings for Pavia, it takes more time to update the plot than the other projects*.
+
 ```{r fig.width=8}
 X <- copy(DT)
 X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
@@ -96,7 +100,7 @@ X[, x_label := factor(x_label, levels = .X$x_label)]
 X[, market := factor(market, levels = c("jpg.store", "cnft.io"))]
 
 ggplot(X, aes(x_label, N, fill = market)) +
-  geom_bar(stat = "identity", alpha = .8) +
+  geom_bar(stat = "identity", alpha = .9) +
   geom_text(aes(label = stat(y), group = x_label),
             stat = 'summary', fun = sum, vjust = -.5, hjust = +.55,
             color = "steelblue4", size = 3) +
@@ -117,7 +121,134 @@ ggplot(X, aes(x_label, N, fill = market)) +
         plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
 ```
 
-*Note that since there are thousands of listings for Pavia, it takes more time to update the plot than the other projects*.
+
+### Listing distribution over time
+```{r}
+# Is there enough data?
+.hours_ago <- 12
+.data_dates <- DTE[order(data_date), unique(data_date)]
+.data_date_now <- .data_dates[length(.data_dates)]
+.data_date_after <- .data_dates[!(.data_dates %in% .data_date_now)]
+.data_date_after_hours <- difftime(.data_date_now, .data_date_after, units = "hours")
+.enoughData <- ifelse(all(.data_date_after_hours < .hours_ago), FALSE, TRUE)
+
+if(!.enoughData) cat("Not enough data at the moment, please come back later.")
+
+# Find data date collection closest to one hour after the first data collection
+.data_date_next <- .data_date_after[which.min(abs(.data_date_after_hours - .hours_ago))]
+.diff_minutes_now_next <- difftime(.data_date_now, .data_date_next, units = "mins")
+```
+
+```{r eval=.enoughData, fig.height=7, fig.width=10}
+X <- DTE[data_date %in% c(.data_date_now, .data_date_next)]
+X[, data_when := fcase(
+  data_date == .data_date_now, "Now",
+  data_date == .data_date_next, sprintf("About %sh ago", .hours_ago)
+)]
+
+data_when_order <- X[order(-data_date), unique(data_when)]
+X[, data_when := factor(data_when, levels = data_when_order)]
+
+X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
+X[price %between% c(1000, 1999), price_range := trunc(price/100)*100]
+X[price %between% c(2000, 14999), price_range := trunc(price/1000)*1000]
+X[price >= 15000, price_range := 15000]
+X <- X[complete.cases(price_range), .(price_range, price, market, data_when)]
+
+CAP <- X[, .(floor = min(price), listings = .N), data_when]
+.caption <- paste0(
+  sprintf("Now: Floor = %s | Listings = %s", CAP[1, floor], CAP[1, listings]),
+  sprintf("\n%sh ago: Floor = %s | Listings = %s", .hours_ago, CAP[2, floor], CAP[2, listings]),
+  "\nSource: https://cnftstats.github.io/"
+)
+
+X <- X[, .N, .(price_range, market, data_when)][order(price_range)]
+X[price_range %between% c(0, 999),      x_label := paste0(price_range, "-", price_range + (50-1))]
+X[price_range %between% c(1000, 1999),  x_label := paste0(price_range, "-", price_range + (100-1))]
+X[price_range %between% c(2000, 14999), x_label := paste0(price_range, "-", price_range + (1000-1))]
+X[price_range >= 15000,                 x_label := "15000+"]
+
+.X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
+X[, x_label := factor(x_label, levels = .X$x_label)]
+X[, market  := factor(market, levels = c("jpg.store", "cnft.io"))]
+
+ggplot(X, aes(x_label, N, fill = market, alpha = data_when)) +
+  facet_grid(data_when~.) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = stat(y), group = x_label),
+            stat = 'summary', fun = sum, vjust = -.5, hjust = +.55,
+            color = "steelblue4", size = 3) +
+  scale_fill_manual(values = c("jpg.store" = "steelblue3", "cnft.io" = "steelblue4")) +
+  scale_alpha_manual(values = c(0.9, 0.7), guide = "none") +
+  labs(x = "Price range", y = "Number of listings", fill = "", caption = .caption) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = -45, vjust = +.5, hjust = 0,
+                                   color = "grey50", size = 8),
+        axis.text.y = element_text(color = "grey50", size = 8),
+        axis.title = element_text(color = "grey30", size = 10),
+        legend.position = "bottom", legend.justification = 'right', legend.direction = "horizontal",
+        legend.text = element_text(color = "grey50", size = 9),
+        legend.key.height = unit(0.5, "points"), legend.key.width = unit(10, "points"),
+        legend.box.spacing = unit(-10, "points"),
+        plot.caption = element_text(color = "#008B8B", vjust = +15, hjust = 0, size = 9),
+        plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
+```
+
+### Sales distribution over time
+```{r fig.height=7, fig.width=10}
+X <- copy(DTS)
+X[, sold_time := trunc(sold_at_days)]
+X[, sold_time := fcase(trunc(sold_at_days) == 0, "0-24h ago",
+                       trunc(sold_at_days) == 1, "24-48h ago",
+                       trunc(sold_at_days) == 2, "48-72h ago")]
+X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
+X[price %between% c(1000, 1999), price_range := trunc(price/100)*100]
+X[price %between% c(2000, 14999), price_range := trunc(price/1000)*1000]
+X[price >= 15000, price_range := 15000]
+X <- X[complete.cases(price_range), .(price_range, price, market, sold_time)]
+
+CAP <- X[, .(sale_range = sprintf("%s-%s", min(price), max(price)),
+             sales = .N, volume = sum(price)/1000), sold_time]
+.caption <- paste0(sprintf("0-24h ago: Sales = %s | Volume = %.0fk", CAP[1, sales], CAP[1, volume]),
+                   sprintf("\n24-48h ago: Sales = %s | Volume = %.0fk", CAP[2, sales], CAP[2, volume]),
+                   sprintf("\n48-72h ago: Sales = %s | Volume = %.0fk",CAP[3, sales], CAP[3, volume]),
+                   "\nSource: https://cnftstats.github.io/")
+
+X <- X[, .N, .(price_range, market, sold_time)][order(price_range)]
+X[price_range %between% c(0, 999),      x_label := paste0(price_range, "-", price_range + (50-1))]
+X[price_range %between% c(1000, 1999),  x_label := paste0(price_range, "-", price_range + (100-1))]
+X[price_range %between% c(2000, 14999), x_label := paste0(price_range, "-", price_range + (1000-1))]
+X[price_range >= 15000,                 x_label := "15000+"]
+
+.X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
+X[, x_label := factor(x_label, levels = .X$x_label)]
+X[, market := factor(market, levels = c("jpg.store", "cnft.io"))]
+
+ggplot(X, aes(x_label, N, fill = market, alpha = sold_time)) +
+  facet_grid(sold_time~.) +
+  geom_hline(yintercept = 0, color = "grey70") +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = stat(y), group = x_label),
+            stat = 'summary', fun = sum, vjust = -.5, hjust = +.55,
+            color = "springgreen4", size = 3) +
+  scale_y_continuous(expand = c(0, 20)) +
+  scale_fill_manual(values = c("jpg.store" = "springgreen3", "cnft.io" = "springgreen4")) +
+  scale_alpha_manual(values = c("0-24h ago" = .9, "24-48h ago" = .8, "48-72h ago" = .7), guide = "none") +
+  labs(x = "Price range", y = "Number of sales", fill = "",
+       caption = .caption) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = -45, vjust = +.5, hjust = 0,
+                                   color = "grey50", size = 8),
+        axis.text.y = element_text(color = "grey50", size = 8),
+        axis.title = element_text(color = "grey30", size = 10),
+        legend.position = "bottom", legend.justification = 'right', legend.direction = "horizontal",
+        legend.text = element_text(color = "grey50", size = 9),
+        legend.key.height = unit(0.5, "points"), legend.key.width = unit(10, "points"),
+        legend.box.spacing = unit(-10, "points"),
+        plot.caption = element_text(color = "#008B8B", vjust = +17, hjust = 0, size = 9),
+        # plot.margin = unit(c(0, 15, 0, 0), units = "pt"),
+        panel.spacing.y = unit(1, "lines"))
+```
 
 ## Column 2 {data-width=350}
 ### Sweep that floor: Lowest listings
