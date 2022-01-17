@@ -2,6 +2,7 @@
 library(data.table)
 library(lubridate)
 library(jsonlite)
+library(magrittr)
 library(tidyr)
 library(httr)
 
@@ -44,8 +45,18 @@ query <- function(page, url, project, sold) {
   ), simplifyVector = TRUE)
 }
 
-CNFT <- query_n(api_link_cnft, project, sold = FALSE) |>
-  lapply(data.table) |> rbindlist(fill = TRUE)
+query_n <- function(url, project, sold, n = "all") {
+  if (n == "all") n <- query(1L, url, project, sold)[["count"]]
+  out <- vector("list", n)
+  for (i in seq_len(n)) {
+    out[[i]] <- query(i, url, project, sold)[["results"]]
+    if (length(out[[i]]) < 1L) return(out[seq_len(i - 1L)])
+  }
+  out
+}
+
+CNFT <- query_n(api_link_cnft, project, sold = FALSE) %>%
+  lapply(data.table) %>% rbindlist(fill = TRUE)
 
 CNFT <- CNFT[asset.policyId == policy_id]
 CNFT[, asset        := asset.metadata.name]
@@ -65,8 +76,8 @@ CNFT <- CNFT[, .(asset, type, price, last_offer, sc, market, link)]
 
 
 # CNFT sales ---------------------------------------------------------------------------------------
-CNFTS <- query_n(api_link_cnft, project, 11, sold = TRUE) |>
-  lapply(data.table) |> rbindlist(fill = TRUE)
+CNFTS <- query_n(api_link_cnft, project, 11, sold = TRUE) %>%
+  lapply(data.table) %>% rbindlist(fill = TRUE)
 
 CNFTS[, asset         := asset.metadata.name]
 CNFTS[, price         := price/10**6]
