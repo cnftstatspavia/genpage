@@ -70,6 +70,7 @@ $(document).ready(function(){
 # Sidebar {data-width=80, .sidebar}
 <ul id="sidebar_ul">
   <li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
+  <li><a href="https://cnftstats.github.io/borgs.html">BorgsClub</a></li>
   <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
   <li id="currentProject"><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
   <li><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
