@@ -2,7 +2,6 @@
 library(data.table)
 library(lubridate)
 library(jsonlite)
-library(magrittr)
 library(tidyr)
 library(httr)
 
@@ -12,8 +11,9 @@ project <- "Pavia"
 time_now <- as_datetime(now())
 
 
-# Databases ----------------------------------------------------------------------------------------
-# Functions
+# Functions ----------------------------------------------------------------------------------------
+extract_num <- function(x) as.numeric(regmatches(x, regexpr("[[:digit:]]+", x)))
+
 loj <- function (X = NULL, Y = NULL, onCol = NULL) {
   if (truelength(X) == 0 | truelength(Y) == 0) 
     stop("setDT(X) and setDT(Y) first")
@@ -22,7 +22,7 @@ loj <- function (X = NULL, Y = NULL, onCol = NULL) {
 }
 
 
-# Extract information from cnft.io -----------------------------------------------------------------
+# CNFT listings ------------------------------------------------------------------------------------
 api_link_cnft <- "https://api.cnft.io/market/listings"
 
 query <- function(page, url, project, sold) {
@@ -30,7 +30,7 @@ query <- function(page, url, project, sold) {
     url = url, 
     body = list(
       search = "", 
-      types = c("listing", "offer"), 
+      types = c("listing", "offer", "bundle"),
       project = project, 
       sort = list(`_id` = -1L), 
       priceMin = NULL, 
@@ -55,34 +55,59 @@ query_n <- function(url, project, sold, n = "all") {
   out
 }
 
-CNFT <- query_n(api_link_cnft, project, sold = FALSE) %>%
-  lapply(data.table) %>% rbindlist(fill = TRUE)
+.CNFT <- query_n(api_link_cnft, project, sold = FALSE) |>
+  lapply(data.table) |> rbindlist(fill = TRUE)
 
-CNFT <- CNFT[asset.policyId == policy_id]
-CNFT[, asset        := asset.metadata.name]
-CNFT[, link         := paste0("https://cnft.io/token/", X_id)]
+.CNFT[, link := paste0("https://cnft.io/token/", ifelse(is.na(X_id), `_id`, X_id))]
+
+# Initialize data.table
+CNFT <- data.table(asset = NA, type = NA, price = NA,
+                   last_offer = NA, sc = NA, market = NA, link = NA)
+
+for (i in 1:nrow(.CNFT)) {
+  CNFT <- rbind(CNFT, data.table(asset        = .CNFT[i, assets[[1]]$metadata$name],
+                                 type         = .CNFT[i, type],
+                                 price        = .CNFT[i, price],
+                                 last_offer   = .CNFT[i, offers],
+                                 sc           = .CNFT[i, smartContractTxid],
+                                 market       = "cnft.io",
+                                 link         = .CNFT[i, link]))
+}
+
+CNFT <- CNFT[2:nrow(CNFT)] # Clear first row from initialization
 CNFT[, price        := price/10**6]
-CNFT[, sc           := ifelse(is.na(smartContractTxid), "no", "yes")]
-CNFT[, market       := "cnft.io"]
+CNFT[, sc           := ifelse(is.na(sc), "no", "yes")]
 
 for (i in 1:nrow(CNFT)) {
-  .offers <- CNFT[i, offers[[1]]]
-  if (nrow(.offers) == 0) CNFT[i, last_offer := 0]
-  if (nrow(.offers) > 0) CNFT[i, last_offer := max(.offers$offer/10**6)]
+  .offers <- CNFT[i, last_offer[[1]]]
+  if (nrow(.offers) == 0) {
+    CNFT[i, last_offer := NA]
+  } else {
+    CNFT[i, last_offer := max(.offers$offer/10**6)]
+  }
 }
-CNFT[type == "listing", last_offer := NA]
-
-CNFT <- CNFT[, .(asset, type, price, last_offer, sc, market, link)]
 
 
 # CNFT sales ---------------------------------------------------------------------------------------
-CNFTS <- query_n(api_link_cnft, project, 11, sold = TRUE) %>%
-  lapply(data.table) %>% rbindlist(fill = TRUE)
+.CNFTS <- query_n(api_link_cnft, project, sold = TRUE, n = 11) |>
+  lapply(data.table) |> rbindlist(fill = TRUE)
 
-CNFTS[, asset         := asset.metadata.name]
+.CNFTS <- .CNFTS[!is.na(soldAt)]
+
+# Initialize data.table
+CNFTS <- data.table(asset = NA, price = NA, market = NA, sold_at = NA)
+
+for (i in 1:nrow(.CNFTS)) {
+  CNFTS <- rbind(CNFTS, data.table(asset    = .CNFTS[i, assets[[1]]$metadata$name],
+                                   price    = .CNFTS[i, price],
+                                   market   = "cnft.io",
+                                   sold_at  = .CNFTS[i, soldAt]))
+}
+
+CNFTS <- CNFTS[2:nrow(CNFTS)] # Clear first row from initialization
 CNFTS[, price         := price/10**6]
 CNFTS[, market        := "cnft.io"]
-CNFTS[, sold_at       := as_datetime(soldAt)]
+CNFTS[, sold_at       := as_datetime(sold_at)]
 CNFTS[, sold_at_hours := difftime(time_now, sold_at, units = "hours")]
 CNFTS[, sold_at_days  := difftime(time_now, sold_at, units = "days")]
 

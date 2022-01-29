@@ -70,65 +70,20 @@ $(document).ready(function(){
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
 ## Column 1 {data-width=650, .tabset}
-### Price distribution
-
-*Note that since there are thousands of listings for Pavia, it takes more time to update the plot than the other projects*.
-
-```{r fig.width=8}
-X <- copy(DT)
-X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
-X[price %between% c(1000, 1999), price_range := trunc(price/100)*100]
-X[price %between% c(2000, 14999), price_range := trunc(price/1000)*1000]
-X[price >= 15000, price_range := 15000]
-X <- X[complete.cases(price_range), .(price_range, market)]
-num_listings <- nrow(X)
-X <- X[, .N, .(price_range, market)][order(price_range)]
-X[price_range %between% c(0, 999),      x_label := paste0(price_range, "-", price_range + (50-1))]
-X[price_range %between% c(1000, 1999),  x_label := paste0(price_range, "-", price_range + (100-1))]
-X[price_range %between% c(2000, 14999), x_label := paste0(price_range, "-", price_range + (1000-1))]
-X[price_range >= 15000,                 x_label := "15000+"]
-.X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
-X[, x_label := factor(x_label, levels = .X$x_label)]
-X[, market := factor(market, levels = c("jpg.store", "cnft.io"))]
-ggplot(X, aes(x_label, N, fill = market)) +
-  geom_bar(stat = "identity", alpha = .9) +
-  geom_text(aes(label = stat(y), group = x_label),
-            stat = 'summary', fun = sum, vjust = -.5, hjust = +.55,
-            color = "steelblue4", size = 3) +
-  scale_fill_manual(values = c("jpg.store" = "steelblue3", "cnft.io" = "steelblue4")) +
-  labs(x = "Price range", y = "Number of listings", fill = "",
-       caption = sprintf("Floor: %d ada  |  Listings: %d\nSource: https://cnftstats.github.io/",
-                         min(DT$price), num_listings)) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = -45, vjust = +.5, hjust = 0,
-                                   color = "grey50", size = 8),
-        axis.text.y = element_text(color = "grey50", size = 8),
-        axis.title = element_text(color = "grey30", size = 9),
-        legend.position = "bottom", legend.justification = 'right', legend.direction = "horizontal",
-        legend.text = element_text(color = "grey50", size = 9),
-        legend.key.height = unit(0.5, "points"), legend.key.width = unit(10, "points"),
-        legend.box.spacing = unit(-10, "points"),
-        plot.caption = element_text(color = "#008B8B", vjust = +17, hjust = 0, size = 8),
-        plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
-```
-
-
-### Listing distribution over time
-```{r}
+### Listings
+```{r, fig.width=9, fig.height=7}
 # Is there enough data?
 .hours_ago <- 12
 .data_dates <- DTE[order(data_date), unique(data_date)]
 .data_date_now <- .data_dates[length(.data_dates)]
 .data_date_after <- .data_dates[!(.data_dates %in% .data_date_now)]
 .data_date_after_hours <- difftime(.data_date_now, .data_date_after, units = "hours")
-.enoughData <- ifelse(all(.data_date_after_hours < .hours_ago), FALSE, TRUE)
-if(!.enoughData) cat("Not enough data at the moment, please come back later.")
+
 # Find data date collection closest to one hour after the first data collection
 .data_date_next <- .data_date_after[which.min(abs(.data_date_after_hours - .hours_ago))]
 .diff_minutes_now_next <- difftime(.data_date_now, .data_date_next, units = "mins")
-```
 
-```{r eval=.enoughData, fig.height=7, fig.width=10}
+# Plot
 X <- DTE[data_date %in% c(.data_date_now, .data_date_next)]
 X[, data_when := fcase(
   data_date == .data_date_now, "Now",
@@ -138,7 +93,8 @@ data_when_order <- X[order(-data_date), unique(data_when)]
 X[, data_when := factor(data_when, levels = data_when_order)]
 X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
 X[price %between% c(1000, 1999), price_range := trunc(price/100)*100]
-X[price %between% c(2000, 14999), price_range := trunc(price/1000)*1000]
+X[price %between% c(2000, 4999), price_range := trunc(price/1000)*1000]
+X[price %between% c(5000, 14999), price_range := trunc(price/5000)*5000]
 X[price >= 15000, price_range := 15000]
 X <- X[complete.cases(price_range), .(price_range, price, market, data_when)]
 CAP <- X[, .(floor = min(price), listings = .N), data_when]
@@ -150,7 +106,8 @@ CAP <- X[, .(floor = min(price), listings = .N), data_when]
 X <- X[, .N, .(price_range, market, data_when)][order(price_range)]
 X[price_range %between% c(0, 999),      x_label := paste0(price_range, "-", price_range + (50-1))]
 X[price_range %between% c(1000, 1999),  x_label := paste0(price_range, "-", price_range + (100-1))]
-X[price_range %between% c(2000, 14999), x_label := paste0(price_range, "-", price_range + (1000-1))]
+X[price_range %between% c(2000, 4999),  x_label := paste0(price_range, "-", price_range + (1000-1))]
+X[price_range %between% c(5000, 14999), x_label := paste0(price_range, "-", price_range + (5000-1))]
 X[price_range >= 15000,                 x_label := "15000+"]
 .X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
 X[, x_label := factor(x_label, levels = .X$x_label)]
@@ -177,7 +134,7 @@ ggplot(X, aes(x_label, N, fill = market, alpha = data_when)) +
         plot.margin = unit(c(0, 15, 0, 0), units = "pt"))
 ```
 
-### Sales distribution over time
+### Sales
 ```{r fig.height=7, fig.width=10}
 X <- copy(DTS)
 X[, sold_time := trunc(sold_at_days)]
