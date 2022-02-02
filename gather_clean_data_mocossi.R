@@ -6,13 +6,14 @@ library(tidyr)
 library(httr)
 
 # Variables ----------------------------------------------------------------------------------------
-policy_id <- "8c06b3c611ec9bc9037c76a9e2cf270c7a147341e6daffeda614cdd5"
-project <- "Borg Club"
+policy_id <- "5d5b205252b9f5016422d0eace869d7fd45074a4ea4b6c1dc78d1705"
+project <- "Mocossi"
+project_label <- "mocossi"
 time_now <- as_datetime(now())
 
 
 # Databases ----------------------------------------------------------------------------------------
-RAR <- readRDS("data/RAR_borgs.rds")
+RAR <- readRDS(sprintf("data/RAR_%s.rds", project_label))
 
 
 # Functions ----------------------------------------------------------------------------------------
@@ -61,6 +62,7 @@ query_n <- function(url, project, sold, n = "all") {
 
 .CNFT <- query_n(api_link_cnft, project, sold = FALSE) |>
   lapply(data.table) |> rbindlist(fill = TRUE)
+
 
 .CNFT[, link := paste0("https://cnft.io/token/", ifelse(is.na(X_id), `_id`, X_id))]
 
@@ -125,23 +127,6 @@ CNFTS <- CNFTS[order(-sold_at), .(asset, asset_number, price, sold_at, sold_at_h
 CNFTS <- CNFTS[sold_at_hours <= 24*3]
 
 
-# CNFT sales ---------------------------------------------------------------------------------------
-CNFTS <- query_n(api_link_cnft, project, 10, sold = TRUE) |>
-  lapply(data.table) |> rbindlist(fill = TRUE)
-
-CNFTS[, asset        := asset.metadata.name]
-CNFTS[, asset_number  := as.numeric(gsub("Borg #", "", asset))]
-CNFTS[, price         := price/10**6]
-CNFTS[, market        := "cnft.io"]
-CNFTS[, sold_at       := as_datetime(soldAt)]
-CNFTS[, sold_at_hours := difftime(time_now, sold_at, units = "hours")]
-CNFTS[, sold_at_days  := difftime(time_now, sold_at, units = "days")]
-
-CNFTS <- CNFTS[order(-sold_at), .(asset, asset_number, price, sold_at, sold_at_hours, 
-                                  sold_at_days, market)]
-CNFTS <- CNFTS[sold_at_hours <= 24*3]
-
-
 # JPG listings -------------------------------------------------------------------------------------
 # jpg.store/api/policy - all supported policies
 # jpg.store/api/policy/[id]/listings - listings for a given policy
@@ -152,7 +137,8 @@ JPG <- data.table(fromJSON(rawToChar(GET(api_link)$content)))
 JPG[, link         := paste0("https://www.jpg.store/asset/", asset)]
 JPG[, price        := price_lovelace]
 JPG[, asset        := asset_display_name]
-JPG[, asset_number := as.numeric(gsub("Borg #", "", asset))]
+JPG[, asset        := gsub("Mocossi-Ito-", "Mocossi Ito #", asset_display_name)]
+JPG[, asset_number := extract_num(asset)]
 JPG[, price        := price/10**6]
 JPG[, sc           := "yes"]
 JPG[, market       := "jpg.store"]
@@ -165,8 +151,8 @@ api_link <- sprintf("jpg.store/api/policy/%s/sales", policy_id)
 
 JPGS <- data.table(fromJSON(rawToChar(GET(api_link)$content)))
 JPGS[, price         := price_lovelace]
-JPGS[, asset          := asset_display_name]
-JPGS[, asset_number  := as.numeric(gsub("Borg #", "", asset))]
+JPGS[, asset         := gsub("Mocossi-Ito-", "Mocossi Ito #", asset_display_name)]
+JPGS[, asset_number  := extract_num(asset)]
 JPGS[, price         := price/10**6]
 JPGS[, market        := "jpg.store"]
 JPGS[, sold_at       := as_datetime(purchased_at)]
@@ -197,13 +183,10 @@ loj(DT, RAR, "asset_number")
 setDT(DTS); setDT(RAR)
 loj(DTS, RAR, "asset_number")
 
-DT[, rank_range := fcase(asset_rank %between% c(1, 100), "1-100",
-                         asset_rank %between% c(101, 250), "101-250",
-                         asset_rank %between% c(251, 500), "251-500",
-                         asset_rank %between% c(501, 750), "501-750",
-                         asset_rank %between% c(751, 1000), "751-1000",
-                         asset_rank %between% c(1001, 1500), "1001-1500",
-                         asset_rank %between% c(1501, 2000), "1501-2000",
+DT[, rank_range := fcase(asset_rank %between% c(1,    10),   "1-10",
+                         asset_rank %between% c(11,   100),  "11-100",
+                         asset_rank %between% c(101,  1000), "101-1000",
+                         asset_rank %between% c(1001, 1500), "1001-2000",
                          asset_rank %between% c(2001, 3000), "2001-3000",
                          asset_rank %between% c(3001, 4000), "3001-4000",
                          asset_rank %between% c(4001, 5000), "4001-5000",
@@ -212,13 +195,10 @@ DT[, rank_range := fcase(asset_rank %between% c(1, 100), "1-100",
                          asset_rank %between% c(7001, 8000), "7001-8000",
                          asset_rank %between% c(8001, 9000), "8001-9000",
                          asset_rank %between% c(9001, 9999), "9001-9999") %>% 
-     factor(levels = c("1-100",
-                       "101-250",
-                       "251-500",
-                       "501-750",
-                       "751-1000",
-                       "1001-1500",
-                       "1501-2000",
+     factor(levels = c("1-10",
+                       "11-100",
+                       "101-1000",
+                       "1001-2000",
                        "2001-3000",
                        "3001-4000",
                        "4001-5000",
@@ -228,13 +208,10 @@ DT[, rank_range := fcase(asset_rank %between% c(1, 100), "1-100",
                        "8001-9000",
                        "9001-9999"))]
 
-DTS[, rank_range := fcase(asset_rank %between% c(1, 100), "1-100",
-                          asset_rank %between% c(101, 250), "101-250",
-                          asset_rank %between% c(251, 500), "251-500",
-                          asset_rank %between% c(501, 750), "501-750",
-                          asset_rank %between% c(751, 1000), "751-1000",
-                          asset_rank %between% c(1001, 1500), "1001-1500",
-                          asset_rank %between% c(1501, 2000), "1501-2000",
+DTS[, rank_range := fcase(asset_rank %between% c(1,    10),   "1-10",
+                          asset_rank %between% c(11,   100),  "11-100",
+                          asset_rank %between% c(101,  1000), "101-1000",
+                          asset_rank %between% c(1001, 1500), "1001-2000",
                           asset_rank %between% c(2001, 3000), "2001-3000",
                           asset_rank %between% c(3001, 4000), "3001-4000",
                           asset_rank %between% c(4001, 5000), "4001-5000",
@@ -243,13 +220,10 @@ DTS[, rank_range := fcase(asset_rank %between% c(1, 100), "1-100",
                           asset_rank %between% c(7001, 8000), "7001-8000",
                           asset_rank %between% c(8001, 9000), "8001-9000",
                           asset_rank %between% c(9001, 9999), "9001-9999") %>% 
-      factor(levels = c("1-100",
-                        "101-250",
-                        "251-500",
-                        "501-750",
-                        "751-1000",
-                        "1001-1500",
-                        "1501-2000",
+      factor(levels = c("1-10",
+                        "11-100",
+                        "101-1000",
+                        "1001-2000",
                         "2001-3000",
                         "3001-4000",
                         "4001-5000",
@@ -258,8 +232,6 @@ DTS[, rank_range := fcase(asset_rank %between% c(1, 100), "1-100",
                         "7001-8000",
                         "8001-9000",
                         "9001-9999"))]
-
-
 
 
 # Large format -------------------------------------------------------------------------------------
@@ -279,10 +251,11 @@ saveRDS(DTS, file = "data/DTS.rds")
 
 # Database evolution -------------------------------------------------------------------------------
 DTE <- copy(DT)
-if (file.exists("data/DTE_borgs.rds")) {
-  cat("File data/DTE exists:", file.exists("data/DTE_borgs.rds"), "\n")
-  DTE_old <- readRDS("data/DTE_borgs.rds")
+.file_name <- sprintf("data/DTE_%s.rds", project_label)
+if (file.exists(.file_name)) {
+  cat("File data/DTE exists:", file.exists(.file_name), "\n")
+  DTE_old <- readRDS(.file_name)
   DTE <- rbindlist(list(DTE, DTE_old), fill = TRUE)
   DTE <- DTE[difftime(time_now, data_date, units = "hours") <= 24] # Only retain last 24 hours
 }
-saveRDS(DTE, file = "data/DTE_borgs.rds")
+saveRDS(DTE, file = .file_name)

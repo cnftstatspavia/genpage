@@ -6,13 +6,13 @@ library(tidyr)
 library(httr)
 
 # Variables ----------------------------------------------------------------------------------------
-policy_id <- "8c06b3c611ec9bc9037c76a9e2cf270c7a147341e6daffeda614cdd5"
-project <- "Borg Club"
+policy_id <- "c56d4cceb8a8550534968e1bf165137ca41e908d2d780cc1402079bd"
+project <- "ChilledKongs"
 time_now <- as_datetime(now())
 
 
 # Databases ----------------------------------------------------------------------------------------
-RAR <- readRDS("data/RAR_borgs.rds")
+RAR <- readRDS("data/RAR_chilledkongs.rds")
 
 
 # Functions ----------------------------------------------------------------------------------------
@@ -125,23 +125,6 @@ CNFTS <- CNFTS[order(-sold_at), .(asset, asset_number, price, sold_at, sold_at_h
 CNFTS <- CNFTS[sold_at_hours <= 24*3]
 
 
-# CNFT sales ---------------------------------------------------------------------------------------
-CNFTS <- query_n(api_link_cnft, project, 10, sold = TRUE) |>
-  lapply(data.table) |> rbindlist(fill = TRUE)
-
-CNFTS[, asset        := asset.metadata.name]
-CNFTS[, asset_number  := as.numeric(gsub("Borg #", "", asset))]
-CNFTS[, price         := price/10**6]
-CNFTS[, market        := "cnft.io"]
-CNFTS[, sold_at       := as_datetime(soldAt)]
-CNFTS[, sold_at_hours := difftime(time_now, sold_at, units = "hours")]
-CNFTS[, sold_at_days  := difftime(time_now, sold_at, units = "days")]
-
-CNFTS <- CNFTS[order(-sold_at), .(asset, asset_number, price, sold_at, sold_at_hours, 
-                                  sold_at_days, market)]
-CNFTS <- CNFTS[sold_at_hours <= 24*3]
-
-
 # JPG listings -------------------------------------------------------------------------------------
 # jpg.store/api/policy - all supported policies
 # jpg.store/api/policy/[id]/listings - listings for a given policy
@@ -151,8 +134,8 @@ api_link <- sprintf("jpg.store/api/policy/%s/listings", policy_id)
 JPG <- data.table(fromJSON(rawToChar(GET(api_link)$content)))
 JPG[, link         := paste0("https://www.jpg.store/asset/", asset)]
 JPG[, price        := price_lovelace]
-JPG[, asset        := asset_display_name]
-JPG[, asset_number := as.numeric(gsub("Borg #", "", asset))]
+JPG[, asset        := gsub("ChilledKong", "Chilled Kong #", asset_display_name)]
+JPG[, asset_number := as.numeric(gsub("Chilled Kong #", "", asset))]
 JPG[, price        := price/10**6]
 JPG[, sc           := "yes"]
 JPG[, market       := "jpg.store"]
@@ -165,8 +148,8 @@ api_link <- sprintf("jpg.store/api/policy/%s/sales", policy_id)
 
 JPGS <- data.table(fromJSON(rawToChar(GET(api_link)$content)))
 JPGS[, price         := price_lovelace]
-JPGS[, asset          := asset_display_name]
-JPGS[, asset_number  := as.numeric(gsub("Borg #", "", asset))]
+JPGS[, asset         := gsub("ChilledKong", "Chilled Kong #", asset_display_name)]
+JPGS[, asset_number  := as.numeric(gsub("Chilled Kong #", "", asset))]
 JPGS[, price         := price/10**6]
 JPGS[, market        := "jpg.store"]
 JPGS[, sold_at       := as_datetime(purchased_at)]
@@ -279,10 +262,10 @@ saveRDS(DTS, file = "data/DTS.rds")
 
 # Database evolution -------------------------------------------------------------------------------
 DTE <- copy(DT)
-if (file.exists("data/DTE_borgs.rds")) {
-  cat("File data/DTE exists:", file.exists("data/DTE_borgs.rds"), "\n")
-  DTE_old <- readRDS("data/DTE_borgs.rds")
+if (file.exists("data/DTE_chilledkongs.rds")) {
+  cat("File data/DTE exists:", file.exists("data/DTE_chilledkongs.rds"), "\n")
+  DTE_old <- readRDS("data/DTE_chilledkongs.rds")
   DTE <- rbindlist(list(DTE, DTE_old), fill = TRUE)
   DTE <- DTE[difftime(time_now, data_date, units = "hours") <= 24] # Only retain last 24 hours
 }
-saveRDS(DTE, file = "data/DTE_borgs.rds")
+saveRDS(DTE, file = "data/DTE_chilledkongs.rds")

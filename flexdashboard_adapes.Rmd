@@ -1,5 +1,5 @@
 ---
-title: "Borgs Club Dashboard"
+title: "Adapes Dashboard"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -9,7 +9,7 @@ output:
       - { title: "About", href: "#about" }
     social: ["menu"]
     css: rmd_flexboard.css
-    self_contained: TRUE
+    self_contained: true
     includes:
       in_header: header.html
 ---
@@ -28,14 +28,20 @@ library(svglite)
 library(plotly)
 library(DT)
 
+# Paramaters
+project_label <- "adapes"
+
 # Data
 DT <- readRDS("data/DT.rds")
 DTL <- readRDS("data/DTL.rds")
-RAR <- readRDS("data/RAR_borgs.rds")
+RAR <- readRDS(sprintf("data/RAR_%s.rds", project_label))
 DTS <- readRDS("data/DTS.rds")
-DTE <- readRDS("data/DTE_borgs.rds")
+DTE <- readRDS(sprintf("data/DTE_%s.rds", project_label))
 
-img_link <- "https://raw.githubusercontent.com/cnftstats/images/main/borgs/borg"
+# img_link <- sprintf("https://raw.githubusercontent.com/cnftstats/images/main/%s/%s",
+#                     project_label, project_label)
+
+img_link <- "https://raw.githubusercontent.com/cnftstats/images/main/adapes/adape"
 
 # javascript (clickable datapoints url)
 # https://stackoverflow.com/questions/51681079/how-to-make-scatterplot-points-open-a-hyperlink-using-ggplotly-r
@@ -71,9 +77,9 @@ $(document).ready(function(){
 
 # Sidebar {data-width=80, .sidebar}
 <ul id="sidebar_ul">
-  <li><a href="https://cnftstats.github.io/adapes.html">Adapes</a></li>
+  <li id="currentProject"><a href="https://cnftstats.github.io/adapes.html">Adapes</a></li>
   <li><a href="https://cnftstats.github.io/bcrc.html">BCRC</a></li>
-  <li id="currentProject"><a href="https://cnftstats.github.io/borgs.html">BorgsClub</a></li>
+  <li><a href="https://cnftstats.github.io/borgs.html">BorgsClub</a></li>
   <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
   <li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
   <li><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
@@ -82,7 +88,6 @@ $(document).ready(function(){
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
 ## Column 1 {data-width=650 .tabset}
-
 ### Listings
 ```{r}
 # Is there enough data?
@@ -97,6 +102,7 @@ $(document).ready(function(){
 .data_date_next <- .data_date_after[which.min(abs(.data_date_after_hours - .hours_ago))]
 .diff_minutes_now_next <- difftime(.data_date_now, .data_date_next, units = "mins")
 
+# Plot
 X <- DTE[data_date %in% c(.data_date_now, .data_date_next)]
 X[, data_when := fcase(
   data_date == .data_date_now, "Now",
@@ -217,10 +223,10 @@ ggplot(X, aes(x_label, N, fill = market, alpha = sold_time)) +
 ### Sweep that floor: Lowest listings
 ```{r}
 X <- DT[order(price)][1:15]
-X[, img := sprintf('<img src="%s%d.png" class="img_html">', img_link, asset_number)]
-X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, asset_number)]
+X[, img := sprintf('<img src="%s%s.png" class="img_html">', img_link, gsub("adape", "", asset_name))]
+X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, gsub("adape", "", asset_name))]
 
-X <- X[, .(img, price, asset_rank, asset_rarity, sc, market)]
+X <- X[, .(img, price, asset_rank, market)]
 X <- X[complete.cases(X)]
 
 datatable(X, class = 'compact stripe hover nowrap',
@@ -231,15 +237,15 @@ datatable(X, class = 'compact stripe hover nowrap',
                          bPaginate = FALSE,
                          info = FALSE,
                          columnDefs = list(list(className = 'dt-right', targets = "_all"))),
-          colnames = c("Asset", "Price", "Rank", "Rarity", "Sc", "Market"),
+          colnames = c("Asset", "Price", "Rank", "Market"),
           rownames = FALSE,
           escape = FALSE) %>%
   formatStyle(columns = 1:ncol(X), fontSize = '90%')
 ```
 
 # Rank {data-icon="fa-signal"}
-## Column 1 {data-width=650, .tabset}
-### Linear scale
+## Column 1 {data-width=600, .tabset}
+### Listings x rank
 ```{r}
 max_y <- 6000
 X <- DT[price <= max_y]
@@ -251,9 +257,7 @@ gg <- ggplot(X, aes(asset_rank, price, shape = sc, customdata = link,
                                   "</br></br>", paste("Price:", price,
                                                       "</br>Last offer:", last_offer,
                                                       "</br>Rank:", asset_rank,
-                                                      "</br>Rarity:", asset_rarity,
-                                                      "</br>Market:", market,
-                                                      "</br>Sc:", sc)))) +
+                                                      "</br>Market:", market)))) +
   geom_point(color = "steelblue4", alpha = .6) +
   scale_x_reverse(breaks = scale_x, expand = c(0.03, 0)) +
   scale_y_continuous(n.breaks = 15, limits = c(0, max_y)) +
@@ -371,25 +375,24 @@ ggplotly(gg, tooltip = "text") %>%
 <!--         panel.spacing.y = unit(1, "lines")) -->
 <!-- ``` -->
 
-## Column 2 {data-width=350}
+## Column 2 {data-width=500}
 ### Floor listings by rank range
 ```{r}
 X <- DT[, .SD[price == min(price)], rank_range][order(rank_range)]
-X[, img := sprintf('<img src="%s%d.png" class="img_html">', img_link, asset_number)]
-X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, asset_number)]
+X[, img := sprintf('<img src="%s%s.png" class="img_html">', img_link, gsub("adape", "", asset_name))]
+X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, gsub("adape", "", asset_name))]
 
-X <- X[, .(rank_range, img, price, asset_rank, asset_rarity, sc, market)]
+X <- X[, .(rank_range, img, price, asset_rank, market, asset_traits)]
 X <- X[complete.cases(X)]
 
 datatable(X, class = 'compact stripe hover',
-          options = list(dom = 't',
-                         pageLength = 100,
+          options = list(pageLength = 100,
                          scrollY = '100%',
                          bLengthChange = FALSE,
                          bPaginate = FALSE,
                          info = FALSE,
                          columnDefs = list(list(className = 'dt-right', targets = "_all"))),
-          colnames = c("Rank</br>range", "Asset", "Price", "Rank", "Rarity", "Sc", "Market"),
+          colnames = c("Rank</br>range", "Asset", "Price", "Rank", "Market", "Traits"),
           rownames = FALSE,
           escape = FALSE) %>%
   formatStyle(columns = 1:ncol(X), fontSize = '90%')
@@ -446,7 +449,6 @@ datatable(X, class = 'compact stripe hover',
 
 > Use the search box to look for your NFT. For example, search `#3000`.
 
-
 # Support this project {data-icon="ion-heart"}
 ## Column 1
 ### Thanks for your support!
@@ -491,32 +493,6 @@ Tips would also be greatly appreciated! This would encourage me to maintain and 
 
 
 ## Column 3
-### Changelog
-#### Version 1.0
-- This is the first version of this website! More to come soon
-
-#### Version 1.1
-- Added the Mocossi project
-- Improvements on how often the website updates
-#### Version 1.2
-- Sweep floor section added
-
-#### Version 1.3
-- Added the Space Ape Club project
-
-#### Version 1.4
-- Improved the floor section
-- Removed the rarity section as it was very much redundant with the rank section
-
-#### Version 1.5
-- Added the Chilled Kongs project
-
-#### Version 1.6
-- Added the Pavia project (not that it takes more time to update than the other projects)
-
-#### Version 1.7
-- Stats about sales
-
 ### About me
 - I am passionate about crypto, (c)nfts, stats, and programming!
 - Hit me on discord: <a href="https://discord.com/users/K2#8332/" target="_blank">K2#8332</a>
