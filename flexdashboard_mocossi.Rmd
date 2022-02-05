@@ -82,13 +82,13 @@ $(document).ready(function(){
   <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
   <li id="currentProject"><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
   <li><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
-  <li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
+  <li><a href="https://cnftstats.github.io/spacebudz.html">SpaceBudz</a></li>
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
 ## Column 1 {data-width=650 .tabset}
 ### Listings
-```{r}
+```{r, fig.width=9, fig.height=7}
 # Is there enough data?
 .hours_ago <- 12
 .data_dates <- DTE[order(data_date), unique(data_date)]
@@ -294,81 +294,6 @@ ggplotly(gg, tooltip = "text") %>%
 ```
 
 > Only listings below `r as.character(max_y)` ada are displayed.
-
-<!-- ### Listings distribution by rank range -->
-<!-- ```{r fig.height=7, fig.width=8} -->
-<!-- X <- copy(DT) -->
-<!-- X <- X[complete.cases(rank_range), .(rank_range, market)] -->
-<!-- X <- X[, .N, .(rank_range, market)][order(rank_range)] -->
-<!-- num_listings <- nrow(X) -->
-
-<!-- X[, market := factor(market, levels = c("jpg.store", "cnft.io"))] -->
-<!-- X[, rank_range := factor(rank_range, levels = rev(levels(rank_range)))] -->
-
-<!-- ggplot(X, aes(rank_range, N, fill = market)) + -->
-<!--   geom_hline(yintercept = 0, color = "grey70") + -->
-<!--   geom_bar(stat = "identity", alpha = .8) + -->
-<!--   geom_text(aes(label = stat(y), group = rank_range), -->
-<!--             stat = 'summary', fun = sum, vjust = -.5, hjust = +.55, -->
-<!--             color = "steelblue4", size = 3) + -->
-<!--   scale_y_continuous(expand = c(0, 20)) + -->
-<!--   scale_fill_manual(values = c("jpg.store" = "steelblue3", "cnft.io" = "steelblue4")) + -->
-<!--   labs(x = "Rank range", y = "Number of listings", fill = "", -->
-<!--        caption = sprintf("Floor: %d ada  |  Listings: %d\nSource: https://cnftstats.github.io/", -->
-<!--                          min(DT$price), num_listings)) + -->
-<!--   theme_minimal() + -->
-<!--   theme(axis.text.x = element_text(angle = -45, vjust = +.5, hjust = 0, -->
-<!--                                    color = "grey50", size = 8), -->
-<!--         axis.text.y = element_text(color = "grey50", size = 8), -->
-<!--         axis.title = element_text(color = "grey30", size = 9), -->
-<!--         legend.position = "bottom", legend.justification = 'right', legend.direction = "horizontal", -->
-<!--         legend.text = element_text(color = "grey50", size = 9), -->
-<!--         legend.key.height = unit(0.5, "points"), legend.key.width = unit(10, "points"), -->
-<!--         legend.box.spacing = unit(-10, "points"), -->
-<!--         plot.caption = element_text(color = "#008B8B", vjust = +17, hjust = 0, size = 8), -->
-<!--         # plot.margin = unit(c(0, 15, 0, 0), units = "pt"), -->
-<!--         panel.spacing.y = unit(1, "lines")) -->
-<!-- ``` -->
-
-<!-- ### Sales distribution by rank range -->
-<!-- ```{r fig.height=9, fig.width=9} -->
-<!-- X <- copy(DTS) -->
-<!-- X[, sold_time := trunc(sold_at_days)] -->
-<!-- X[, sold_time := fcase(trunc(sold_at_days) == 0, "0-24h ago", -->
-<!--                        trunc(sold_at_days) == 1, "24-48h ago", -->
-<!--                        trunc(sold_at_days) == 2, "48-72h ago")] -->
-<!-- X <- X[complete.cases(rank_range), .(rank_range, market, sold_time)] -->
-<!-- X <- X[, .N, .(rank_range, market, sold_time)][order(rank_range)] -->
-<!-- X[, sold_time := sprintf("%s\nSales: %s", sold_time, sum(N)), sold_time] -->
-
-<!-- X[, market := factor(market, levels = c("jpg.store", "cnft.io"))] -->
-<!-- X[, rank_range := factor(rank_range, levels = rev(levels(rank_range)))] -->
-
-<!-- ggplot(X, aes(rank_range, N, fill = market)) + -->
-<!--   facet_grid(sold_time~.) + -->
-<!--   geom_hline(yintercept = 0, color = "grey70") + -->
-<!--   geom_bar(stat = "identity", alpha = .8) + -->
-<!--   geom_text(aes(label = stat(y), group = rank_range), -->
-<!--             stat = 'summary', fun = sum, vjust = -.5, hjust = +.55, -->
-<!--             color = "springgreen4", size = 3) + -->
-<!--   scale_y_continuous(expand = c(0, 20)) + -->
-<!--   scale_fill_manual(values = c("jpg.store" = "springgreen3", "cnft.io" = "springgreen4")) + -->
-<!--   labs(x = "Rank range", y = "Number of sales", fill = "", -->
-<!--        caption = "Source: https://cnftstats.github.io/") + -->
-<!--   theme_minimal() + -->
-<!--   theme(axis.text.x = element_text(angle = -45, vjust = +.5, hjust = 0, -->
-<!--                                    color = "grey50", size = 8), -->
-<!--         axis.text.y = element_text(color = "grey50", size = 8), -->
-<!--         axis.title = element_text(color = "grey30", size = 9), -->
-<!--         legend.position = "bottom", legend.justification = 'right', legend.direction = "horizontal", -->
-<!--         legend.text = element_text(color = "grey50", size = 9), -->
-<!--         legend.key.height = unit(0.5, "points"), legend.key.width = unit(10, "points"), -->
-<!--         legend.box.spacing = unit(-10, "points"), -->
-<!--         plot.caption = element_text(color = "#008B8B", vjust = +17, hjust = 0, size = 8), -->
-<!--         # plot.margin = unit(c(0, 15, 0, 0), units = "pt"), -->
-<!--         panel.spacing.y = unit(1, "lines")) -->
-<!-- ``` -->
-
 
 ## Column 2 {data-width=400}
 ### Floor listings by rank range

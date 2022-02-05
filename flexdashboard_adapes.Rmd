@@ -83,13 +83,13 @@ $(document).ready(function(){
   <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
   <li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
   <li><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
-  <li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
+  <li><a href="https://cnftstats.github.io/spacebudz.html">SpaceBudz</a></li>
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
 ## Column 1 {data-width=650 .tabset}
 ### Listings
-```{r}
+```{r, fig.width=9, fig.height=7}
 # Is there enough data?
 .hours_ago <- 12
 .data_dates <- DTE[order(data_date), unique(data_date)]
@@ -114,8 +114,8 @@ X[, data_when := factor(data_when, levels = data_when_order)]
 
 X[price %between% c(0, 999),     price_range := trunc(price/50)*50]
 X[price %between% c(1000, 1999), price_range := trunc(price/200)*200]
-X[price %between% c(2000, 4999), price_range := trunc(price/500)*500]
-X[price %between% c(5000, 9999), price_range := trunc(price/2000)*2000]
+X[price %between% c(2000, 5999), price_range := trunc(price/500)*500]
+X[price %between% c(6000, 9999), price_range := trunc(price/2000)*2000]
 X[price >= 10000, price_range := 10000]
 X <- X[complete.cases(price_range), .(price_range, price, market, data_when)]
 
@@ -130,8 +130,8 @@ CAP <- X[, .(floor = min(price), listings = .N), data_when]
 X <- X[, .N, .(price_range, market, data_when)][order(price_range)]
 X[price_range %between% c(0, 999),     x_label := paste0(price_range, "-", price_range + (50-1))]
 X[price_range %between% c(1000, 1999), x_label := paste0(price_range, "-", price_range + (200-1))]
-X[price_range %between% c(2000, 4999), x_label := paste0(price_range, "-", price_range + (500-1))]
-X[price_range %between% c(5000, 9999), x_label := paste0(price_range, "-", price_range + (2000-1))]
+X[price_range %between% c(2000, 5999), x_label := paste0(price_range, "-", price_range + (500-1))]
+X[price_range %between% c(6000, 9999), x_label := paste0(price_range, "-", price_range + (2000-1))]
 X[price_range > 9999,                  x_label := "10000+"]
 
 .X <- X[, .(price_range, x_label)] %>% unique %>% .[order(price_range)]
@@ -247,7 +247,7 @@ datatable(X, class = 'compact stripe hover nowrap',
 ## Column 1 {data-width=600, .tabset}
 ### Listings x rank
 ```{r}
-max_y <- 6000
+max_y <- max(DT[, quantile(price, probs = .90)], DTS[, max(price)])
 X <- DT[price <= max_y]
 scale_x <- c(seq(0, 2000, 250), seq(2500, 10000, 500))
 scale_x[scale_x == 0] <- 1
@@ -274,13 +274,12 @@ ggplotly(gg, tooltip = "text") %>%
 
 ### Sales x rank
 ```{r}
-max_y <- 6000
+max_y <- max(DT[, quantile(price, probs = .90)], DTS[, max(price)])
 X <- DTS[price <= max_y]
 X[, sold_time := trunc(sold_at_days)]
 X[, sold_time := fcase(trunc(sold_at_days) == 0, "0-24h ago",
                        trunc(sold_at_days) == 1, "24-48h ago",
                        trunc(sold_at_days) == 2, "48-72h ago")]
-scale_x <- c(seq(0, 2000, 250), seq(2500, 10000, 500))
 scale_x[scale_x == 0] <- 1
 scale_x[scale_x == 10000] <- 9999
 
@@ -382,7 +381,7 @@ X <- DT[, .SD[price == min(price)], rank_range][order(rank_range)]
 X[, img := sprintf('<img src="%s%s.png" class="img_html">', img_link, gsub("adape", "", asset_name))]
 X[, img := sprintf('<a href="%s" target="_blank">%s</br>#%s</a>', link, img, gsub("adape", "", asset_name))]
 
-X <- X[, .(rank_range, img, price, asset_rank, market, asset_traits)]
+X <- X[, .(rank_range, img, price, asset_rank, market)]
 X <- X[complete.cases(X)]
 
 datatable(X, class = 'compact stripe hover',
@@ -392,7 +391,7 @@ datatable(X, class = 'compact stripe hover',
                          bPaginate = FALSE,
                          info = FALSE,
                          columnDefs = list(list(className = 'dt-right', targets = "_all"))),
-          colnames = c("Rank</br>range", "Asset", "Price", "Rank", "Market", "Traits"),
+          colnames = c("Rank</br>range", "Asset", "Price", "Rank", "Market"),
           rownames = FALSE,
           escape = FALSE) %>%
   formatStyle(columns = 1:ncol(X), fontSize = '90%')

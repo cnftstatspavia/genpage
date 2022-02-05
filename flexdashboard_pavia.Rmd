@@ -66,7 +66,7 @@ $(document).ready(function(){
   <li><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
   <li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
   <li id="currentProject"><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
-  <li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
+  <li><a href="https://cnftstats.github.io/spacebudz.html">SpaceBudz</a></li>
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}

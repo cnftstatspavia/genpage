@@ -77,14 +77,14 @@ $(document).ready(function(){
   <li id="currentProject"><a href="https://cnftstats.github.io/chilledkongs.html">ChilledKongs</a></li>
   <li><a href="https://cnftstats.github.io/mocossi.html">Mocossi</a></li>
   <li><a href="https://cnftstats.github.io/pavia.html">Pavia</a></li>
-  <li><a href="https://cnftstats.github.io/sac.html">SpaceApe</a></li>
+  <li><a href="https://cnftstats.github.io/spacebudz.html">SpaceBudz</a></li>
 </ul>
 
 # Floor {data-icon="ion-arrow-graph-up-right"}
 ## Column 1 {data-width=650 .tabset}
 
 ### Listings
-```{r}
+```{r, fig.width=9, fig.height=7}
 # Is there enough data?
 .hours_ago <- 12
 .data_dates <- DTE[order(data_date), unique(data_date)]
